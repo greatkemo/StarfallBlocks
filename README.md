@@ -8,7 +8,7 @@ This is a fully implemented SNES-style Tetris clone built with HTML5 Canvas and 
 ### Option 1: Docker (Recommended)
 ```bash
 git clone <repository-url>
-cd CloneTris
+cd StarfallBlocks
 ./run.sh
 ```
 Open `http://localhost:8080` in your browser.
@@ -54,7 +54,7 @@ Simply open `starfall-blocks.html` in any modern browser.
 ## 📁 Project Structure
 
 ```
-CloneTris/
+StarfallBlocks/
 ├── starfall-blocks.html    # 🎯 Complete game (single file)
 ├── Dockerfile             # 🐳 Container configuration
 ├── nginx.conf             # 🌐 Web server setup
