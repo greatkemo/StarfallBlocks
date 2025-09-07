@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  starfall-blocks:
+    build: .
+    ports:
+      - "8080:80"
+    container_name: starfall-blocks-game
+    restart: unless-stopped
+    volumes:
+      # Optional: Mount for easy development
+      - ./starfall-blocks.html:/usr/share/nginx/html/index.html:ro
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.starfall-blocks.rule=Host(`localhost`)"
+      - "traefik.http.services.starfall-blocks.loadbalancer.server.port=80"

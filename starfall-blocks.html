@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starfall Blocks - SNES Tetris Clone</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(45deg, #0E0E10, #1a1a2e);
+            font-family: 'Press Start 2P', monospace;
+            color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            max-width: 100vw;
+            overflow: hidden;
+        }
+
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            flex-shrink: 0;
+        }
+
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: visible;
+            position: relative;
+        }
+
+        #gameCanvas {
+            border: 3px solid #323c39;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            transition: transform 0.2s ease;
+            transform-origin: center center;
+            display: block;
+        }
+
+        .scale-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(34, 32, 52, 0.8);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 2px solid #323c39;
+            z-index: 100;
+            position: relative;
+        }
+
+        .scale-button {
+            background: #3D5AA9;
+            color: #f4f4f4;
+            border: none;
+            width: 30px;
+            height: 30px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s ease;
+        }
+
+        .scale-button:hover {
+            background: #4a6bc7;
+        }
+
+        .scale-button:active {
+            background: #2d4285;
+        }
+
+        .scale-info {
+            color: #f4f4f4;
+            font-size: 8px;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .title {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 16px;
+            color: #59CBE8;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        .controls {
+            background: rgba(34, 32, 52, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #323c39;
+            font-size: 8px;
+            line-height: 1.5;
+            max-width: 200px;
+            min-width: 200px;
+            flex-shrink: 0;
+            z-index: 100;
+            position: relative;
+        }
+
+        .controls h3 {
+            color: #F99D1C;
+            margin-bottom: 10px;
+            font-size: 10px;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .key {
+            background: #323c39;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #f4f4f4;
+        }
+
+        .game-over-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .game-over-content {
+            background: #222034;
+            border: 3px solid #323c39;
+            padding: 30px;
+            text-align: center;
+            border-radius: 8px;
+        }
+
+        .game-over-content h2 {
+            color: #E86A6A;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+        .game-over-content p {
+            margin-bottom: 10px;
+            font-size: 10px;
+        }
+
+        .game-over-content button {
+            background: #3D5AA9;
+            color: #f4f4f4;
+            border: none;
+            padding: 10px 20px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+
+        .game-over-content button:hover {
+            background: #4a6bc7;
+        }
+
+        @media (max-width: 800px) {
+            .game-container {
+                flex-direction: column;
+                align-items: center;
+                gap: 15px;
+            }
+            
+            .controls {
+                order: -1;
+                max-width: 90vw;
+                min-width: auto;
+            }
+
+            .scale-controls {
+                order: 1;
+            }
+
+            .canvas-container {
+                max-width: 90vw;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="title">
+        <h1>STARFALL BLOCKS</h1>
+        <p style="font-size: 8px; margin-top: 5px;">Press any key to start audio</p>
+    </div>
+
+    <div class="game-container">
+        <div class="game-area">
+                        <div class="canvas-container" style="width: 240px; height: 180px;">
+                <canvas id="gameCanvas" width="480" height="360" style="transform: scale(0.5);"></canvas>
+            </div>
+            
+            <div class="scale-controls">
+                <button class="scale-button" id="scaleDown" title="Zoom Out">−</button>
+                <div class="scale-info">
+                    <div>ZOOM</div>
+                    <div id="scaleDisplay">100%</div>
+                </div>
+                <button class="scale-button" id="scaleUp" title="Zoom In">+</button>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <h3>CONTROLS</h3>
+            <div class="control-row">
+                <span>Move:</span>
+                <span><span class="key">←</span> <span class="key">→</span></span>
+            </div>
+            <div class="control-row">
+                <span>Soft Drop:</span>
+                <span><span class="key">↓</span></span>
+            </div>
+            <div class="control-row">
+                <span>Hard Drop:</span>
+                <span><span class="key">SPACE</span></span>
+            </div>
+            <div class="control-row">
+                <span>Rotate:</span>
+                <span><span class="key">X</span> <span class="key">Z</span></span>
+            </div>
+            <div class="control-row">
+                <span>Pause:</span>
+                <span><span class="key">P</span></span>
+            </div>
+            <div class="control-row">
+                <span>Reset:</span>
+                <span><span class="key">R</span></span>
+            </div>
+            <div class="control-row">
+                <span>Zoom:</span>
+                <span><span class="key">+</span> <span class="key">-</span></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="gameOverScreen" class="game-over-screen">
+        <div class="game-over-content">
+            <h2>GAME OVER</h2>
+            <p>Score: <span id="finalScore">0</span></p>
+            <p>Level: <span id="finalLevel">0</span></p>
+            <p>Lines: <span id="finalLines">0</span></p>
+            <button onclick="game.newGame(); document.getElementById('gameOverScreen').style.display = 'none';">
+                PLAY AGAIN
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            BOARD: {
+                COLS: 10,
+                ROWS_VISIBLE: 20,
+                ROWS_BUFFER: 2,
+                CELL_SIZE: 16,
+                SPAWN_COL: 3,
+                SPAWN_ROW: -1
+            },
+            CANVAS: {
+                WIDTH: 480,
+                HEIGHT: 360
+            },
+            TIMING: {
+                DAS: 130,
+                ARR: 23,
+                LOCK_DELAY: 500,
+                ENTRY_DELAY: 150,
+                LINE_CLEAR_ANIM: 300,
+                FRAME_TIME: 16.67
+            },
+            KEYS: {
+                left: 'ArrowLeft',
+                right: 'ArrowRight',
+                soft_drop: 'ArrowDown',
+                hard_drop: 'Space',
+                rotate_cw: 'KeyX',
+                rotate_ccw: 'KeyZ',
+                pause: 'KeyP',
+                reset: 'KeyR'
+            },
+            FEATURES: {
+                ghost: true,
+                hard_drop: true
+            },
+            GRAVITY_TABLE: {
+                0: 48, 1: 43, 2: 38, 3: 33, 4: 28, 5: 23, 6: 18, 7: 13, 8: 8, 9: 6,
+                10: 5, 11: 5, 12: 5, 13: 4, 14: 4, 15: 4, 16: 3, 17: 3, 18: 3, 19: 2,
+                20: 2, 21: 2, 22: 2, 23: 2, 24: 2, 25: 2, 26: 2, 27: 2, 28: 2, 29: 1
+            },
+            SCORING: {
+                LINE_CLEAR: { 1: 100, 2: 300, 3: 500, 4: 800 },
+                MOVEMENT: { soft_drop_per_cell: 1, hard_drop_per_cell: 2 },
+                LINES_PER_LEVEL: 10
+            },
+            COLORS: {
+                I: '#59CBE8', J: '#3D5AA9', L: '#F99D1C', O: '#F2D94E',
+                S: '#76C893', T: '#B084CC', Z: '#E86A6A',
+                GHOST: '#FFFFFF40', BORDER: '#323c39', BG: '#0E0E10'
+            }
+        };
+
+        // Tetromino shapes (4x4 grid, 4 rotations each)
+        const TETROMINO_SHAPES = {
+            I: [
+                [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+                [[0,0,1,0],[0,0,1,0],[0,0,1,0],[0,0,1,0]],
+                [[0,0,0,0],[0,0,0,0],[1,1,1,1],[0,0,0,0]],
+                [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]]
+            ],
+            J: [
+                [[1,0,0,0],[1,1,1,0],[0,0,0,0],[0,0,0,0]],
+                [[0,1,1,0],[0,1,0,0],[0,1,0,0],[0,0,0,0]],
+                [[0,0,0,0],[1,1,1,0],[0,0,1,0],[0,0,0,0]],
+                [[0,1,0,0],[0,1,0,0],[1,1,0,0],[0,0,0,0]]
+            ],
+            L: [
+                [[0,0,1,0],[1,1,1,0],[0,0,0,0],[0,0,0,0]],
+                [[0,1,0,0],[0,1,0,0],[0,1,1,0],[0,0,0,0]],
+                [[0,0,0,0],[1,1,1,0],[1,0,0,0],[0,0,0,0]],
+                [[1,1,0,0],[0,1,0,0],[0,1,0,0],[0,0,0,0]]
+            ],
+            O: [
+                [[0,1,1,0],[0,1,1,0],[0,0,0,0],[0,0,0,0]],
+                [[0,1,1,0],[0,1,1,0],[0,0,0,0],[0,0,0,0]],
+                [[0,1,1,0],[0,1,1,0],[0,0,0,0],[0,0,0,0]],
+                [[0,1,1,0],[0,1,1,0],[0,0,0,0],[0,0,0,0]]
+            ],
+            S: [
+                [[0,1,1,0],[1,1,0,0],[0,0,0,0],[0,0,0,0]],
+                [[0,1,0,0],[0,1,1,0],[0,0,1,0],[0,0,0,0]],
+                [[0,0,0,0],[0,1,1,0],[1,1,0,0],[0,0,0,0]],
+                [[1,0,0,0],[1,1,0,0],[0,1,0,0],[0,0,0,0]]
+            ],
+            T: [
+                [[0,1,0,0],[1,1,1,0],[0,0,0,0],[0,0,0,0]],
+                [[0,1,0,0],[0,1,1,0],[0,1,0,0],[0,0,0,0]],
+                [[0,0,0,0],[1,1,1,0],[0,1,0,0],[0,0,0,0]],
+                [[0,1,0,0],[1,1,0,0],[0,1,0,0],[0,0,0,0]]
+            ],
+            Z: [
+                [[1,1,0,0],[0,1,1,0],[0,0,0,0],[0,0,0,0]],
+                [[0,0,1,0],[0,1,1,0],[0,1,0,0],[0,0,0,0]],
+                [[0,0,0,0],[1,1,0,0],[0,1,1,0],[0,0,0,0]],
+                [[0,1,0,0],[1,1,0,0],[1,0,0,0],[0,0,0,0]]
+            ]
+        };
+
+        // Linear Congruential Generator for deterministic randomness
+        class LCG {
+            constructor(seed = Date.now()) {
+                this.seed = seed;
+            }
+            
+            next() {
+                this.seed = (this.seed * 1664525 + 1013904223) % Math.pow(2, 32);
+                return this.seed / Math.pow(2, 32);
+            }
+        }
+
+        // 7-Bag Randomizer
+        class SevenBag {
+            constructor(seed = Date.now()) {
+                this.rng = new LCG(seed);
+                this.bag = [];
+                this.refill();
+            }
+            
+            refill() {
+                this.bag = ['I', 'J', 'L', 'O', 'S', 'T', 'Z'];
+                this.shuffle();
+            }
+            
+            next() {
+                if (this.bag.length === 0) this.refill();
+                return this.bag.pop();
+            }
+            
+            shuffle() {
+                for (let i = this.bag.length - 1; i > 0; i--) {
+                    const j = Math.floor(this.rng.next() * (i + 1));
+                    [this.bag[i], this.bag[j]] = [this.bag[j], this.bag[i]];
+                }
+            }
+        }
+
+        // Tetromino piece
+        class Tetromino {
+            constructor(type, x = CONFIG.BOARD.SPAWN_COL, y = CONFIG.BOARD.SPAWN_ROW) {
+                this.type = type;
+                this.x = x;
+                this.y = y;
+                this.rotation = 0;
+                this.cells = TETROMINO_SHAPES[type][0];
+            }
+            
+            rotate(direction, board) {
+                const newRotation = (this.rotation + direction + 4) % 4;
+                const newCells = TETROMINO_SHAPES[this.type][newRotation];
+                
+                // Basic wall kicks
+                const kickTests = [[0, 0], [-1, 0], [1, 0], [0, -1]];
+                
+                for (const [dx, dy] of kickTests) {
+                    if (board.isValidPosition(newCells, this.x + dx, this.y + dy)) {
+                        this.rotation = newRotation;
+                        this.cells = newCells;
+                        this.x += dx;
+                        this.y += dy;
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+        }
+
+        // Game board
+        class Board {
+            constructor() {
+                this.grid = Array(CONFIG.BOARD.ROWS_VISIBLE + CONFIG.BOARD.ROWS_BUFFER)
+                    .fill(null)
+                    .map(() => Array(CONFIG.BOARD.COLS).fill(0));
+            }
+            
+            isValidPosition(cells, x, y) {
+                for (let row = 0; row < cells.length; row++) {
+                    for (let col = 0; col < cells[row].length; col++) {
+                        if (cells[row][col]) {
+                            const boardX = x + col;
+                            const boardY = y + row;
+                            
+                            if (boardX < 0 || boardX >= CONFIG.BOARD.COLS || 
+                                boardY >= this.grid.length) {
+                                return false;
+                            }
+                            
+                            if (boardY >= 0 && this.grid[boardY][boardX]) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+            
+            lockPiece(piece) {
+                for (let row = 0; row < piece.cells.length; row++) {
+                    for (let col = 0; col < piece.cells[row].length; col++) {
+                        if (piece.cells[row][col]) {
+                            const boardY = piece.y + row;
+                            const boardX = piece.x + col;
+                            
+                            if (boardY >= 0) {
+                                this.grid[boardY][boardX] = piece.type;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            checkLines() {
+                const fullLines = [];
+                for (let y = 0; y < this.grid.length; y++) {
+                    if (this.grid[y].every(cell => cell !== 0)) {
+                        fullLines.push(y);
+                    }
+                }
+                return fullLines;
+            }
+            
+            clearLines(lines) {
+                lines.sort((a, b) => b - a);
+                for (const lineY of lines) {
+                    this.grid.splice(lineY, 1);
+                    this.grid.unshift(Array(CONFIG.BOARD.COLS).fill(0));
+                }
+                return lines.length;
+            }
+        }
+
+        // Input handler
+        class InputHandler {
+            constructor() {
+                this.keys = new Set();
+                this.dasTimer = 0;
+                this.arrTimer = 0;
+                this.dasCharged = false;
+                this.lastDirection = null;
+                this.bindEvents();
+            }
+            
+            bindEvents() {
+                document.addEventListener('keydown', (e) => {
+                    this.keys.add(e.code);
+                    e.preventDefault();
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys.delete(e.code);
+                    e.preventDefault();
+                });
+            }
+            
+            update(dt) {
+                return this.updateMovement(dt);
+            }
+            
+            updateMovement(dt) {
+                const leftHeld = this.keys.has(CONFIG.KEYS.left);
+                const rightHeld = this.keys.has(CONFIG.KEYS.right);
+                
+                if (!leftHeld && !rightHeld) {
+                    this.reset();
+                    return null;
+                }
+                
+                const direction = leftHeld ? 'left' : 'right';
+                
+                if (direction !== this.lastDirection) {
+                    this.dasTimer = 0;
+                    this.dasCharged = false;
+                    this.lastDirection = direction;
+                    return { move: direction, initial: true };
+                }
+                
+                this.dasTimer += dt;
+                
+                if (!this.dasCharged && this.dasTimer >= CONFIG.TIMING.DAS) {
+                    this.dasCharged = true;
+                    this.arrTimer = 0;
+                    return { move: direction, das: true };
+                }
+                
+                if (this.dasCharged) {
+                    this.arrTimer += dt;
+                    if (this.arrTimer >= CONFIG.TIMING.ARR) {
+                        this.arrTimer = 0;
+                        return { move: direction, arr: true };
+                    }
+                }
+                
+                return null;
+            }
+            
+            reset() {
+                this.dasTimer = 0;
+                this.arrTimer = 0;
+                this.dasCharged = false;
+                this.lastDirection = null;
+            }
+        }
+
+        // Gravity system
+        class GravitySystem {
+            constructor() {
+                this.gravityTimer = 0;
+                this.lockTimer = 0;
+                this.lockResetCount = 0;
+                this.isLocking = false;
+            }
+            
+            update(dt, level, piece, board) {
+                const gravityFrames = CONFIG.GRAVITY_TABLE[Math.min(level, 29)];
+                const gravityTime = gravityFrames * CONFIG.TIMING.FRAME_TIME;
+                
+                this.gravityTimer += dt;
+                
+                if (this.gravityTimer >= gravityTime) {
+                    this.gravityTimer = 0;
+                    
+                    if (board.isValidPosition(piece.cells, piece.x, piece.y + 1)) {
+                        piece.y++;
+                        this.isLocking = false;
+                        this.lockTimer = 0;
+                    } else {
+                        this.startLocking();
+                    }
+                }
+                
+                if (this.isLocking) {
+                    this.lockTimer += dt;
+                    if (this.lockTimer >= CONFIG.TIMING.LOCK_DELAY) {
+                        return { shouldLock: true };
+                    }
+                }
+                
+                return { shouldLock: false };
+            }
+            
+            startLocking() {
+                if (!this.isLocking) {
+                    this.isLocking = true;
+                    this.lockTimer = 0;
+                }
+            }
+            
+            resetLock() {
+                if (this.lockResetCount < 1) {
+                    this.lockTimer = 0;
+                    this.lockResetCount++;
+                }
+            }
+            
+            finishLock() {
+                this.isLocking = false;
+                this.lockTimer = 0;
+                this.lockResetCount = 0;
+            }
+        }
+
+        // Simple audio system
+        class AudioSystem {
+            constructor() {
+                this.audioContext = null;
+                this.initialized = false;
+            }
+            
+            async init() {
+                if (this.initialized) return;
+                
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.initialized = true;
+                } catch (error) {
+                    console.warn('Audio initialization failed:', error);
+                }
+            }
+            
+            playTone(frequency, duration, type = 'square') {
+                if (!this.initialized || !this.audioContext) return;
+                
+                try {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.type = type;
+                    oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                    
+                    gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration / 1000);
+                    
+                    oscillator.start();
+                    oscillator.stop(this.audioContext.currentTime + duration / 1000);
+                } catch (error) {
+                    console.warn('Audio playback failed:', error);
+                }
+            }
+            
+            playSFX(event) {
+                const sfxMap = {
+                    move: () => this.playTone(392, 30), // G4
+                    rotate: () => this.playTone(466, 40, 'triangle'), // Bb4
+                    lock: () => this.playTone(330, 60), // E4
+                    line_clear: () => this.playTone(523, 220, 'sawtooth'), // C5
+                    tetris: () => {
+                        this.playTone(262, 100); // C4
+                        setTimeout(() => this.playTone(392, 100), 100); // G4
+                        setTimeout(() => this.playTone(523, 200), 200); // C5
+                    },
+                    level_up: () => {
+                        [349, 440, 523, 698].forEach((freq, i) => {
+                            setTimeout(() => this.playTone(freq, 100, 'sawtooth'), i * 100);
+                        });
+                    },
+                    game_over: () => {
+                        [330, 311, 294, 277, 262].forEach((freq, i) => {
+                            setTimeout(() => this.playTone(freq, 150, 'triangle'), i * 150);
+                        });
+                    }
+                };
+                
+                if (sfxMap[event]) {
+                    sfxMap[event]();
+                }
+            }
+        }
+
+        // Renderer
+        class Renderer {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.ctx.imageSmoothingEnabled = false;
+                this.setupCanvas();
+            }
+            
+            setupCanvas() {
+                this.canvas.width = CONFIG.CANVAS.WIDTH;
+                this.canvas.height = CONFIG.CANVAS.HEIGHT;
+            }
+            
+            clear() {
+                this.ctx.fillStyle = CONFIG.COLORS.BG;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Subtle scanlines
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+                this.ctx.lineWidth = 1;
+                for (let y = 0; y < this.canvas.height; y += 4) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(this.canvas.width, y);
+                    this.ctx.stroke();
+                }
+            }
+            
+            drawBoard(board) {
+                const offsetX = 100;
+                const offsetY = 20; // Reduced back to 20 to fit properly in canvas
+                
+                // Board border
+                this.ctx.strokeStyle = CONFIG.COLORS.BORDER;
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(
+                    offsetX - 2, 
+                    offsetY - 2, 
+                    CONFIG.BOARD.COLS * CONFIG.BOARD.CELL_SIZE + 4,
+                    CONFIG.BOARD.ROWS_VISIBLE * CONFIG.BOARD.CELL_SIZE + 4
+                );
+                
+                // Draw cells
+                for (let y = 0; y < CONFIG.BOARD.ROWS_VISIBLE; y++) {
+                    for (let x = 0; x < CONFIG.BOARD.COLS; x++) {
+                        const cell = board.grid[y + CONFIG.BOARD.ROWS_BUFFER][x];
+                        if (cell) {
+                            this.drawBlock(
+                                offsetX + x * CONFIG.BOARD.CELL_SIZE,
+                                offsetY + y * CONFIG.BOARD.CELL_SIZE,
+                                CONFIG.COLORS[cell]
+                            );
+                        }
+                    }
+                }
+            }
+            
+            drawBlock(x, y, color, alpha = 1) {
+                const size = CONFIG.BOARD.CELL_SIZE;
+                
+                this.ctx.globalAlpha = alpha;
+                
+                // Main block
+                this.ctx.fillStyle = color;
+                this.ctx.fillRect(x, y, size, size);
+                
+                // Bevel effect
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                this.ctx.fillRect(x, y, size, 2);
+                this.ctx.fillRect(x, y, 2, size);
+                
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                this.ctx.fillRect(x, y + size - 2, size, 2);
+                this.ctx.fillRect(x + size - 2, y, 2, size);
+                
+                // Border
+                this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+                this.ctx.lineWidth = 1;
+                this.ctx.strokeRect(x, y, size, size);
+                
+                this.ctx.globalAlpha = 1;
+            }
+            
+            drawPiece(piece, offsetX = 100, offsetY = 20, alpha = 1) {
+                if (!piece) return;
+                
+                for (let row = 0; row < piece.cells.length; row++) {
+                    for (let col = 0; col < piece.cells[row].length; col++) {
+                        if (piece.cells[row][col]) {
+                            const x = offsetX + (piece.x + col) * CONFIG.BOARD.CELL_SIZE;
+                            const y = offsetY + (piece.y + row - CONFIG.BOARD.ROWS_BUFFER) * CONFIG.BOARD.CELL_SIZE;
+                            
+                            // Draw all pieces within the game board area
+                            this.drawBlock(x, y, CONFIG.COLORS[piece.type], alpha);
+                        }
+                    }
+                }
+            }
+            
+            drawGhost(piece, board) {
+                if (!piece || !CONFIG.FEATURES.ghost) return;
+                
+                // Find ghost position
+                let ghostY = piece.y;
+                while (board.isValidPosition(piece.cells, piece.x, ghostY + 1)) {
+                    ghostY++;
+                }
+                
+                // Draw ghost piece
+                const ghostPiece = { ...piece, y: ghostY };
+                this.drawPiece(ghostPiece, 100, 20, 0.25);
+            }
+            
+            drawHUD(gameState) {
+                const hudX = 300;
+                const hudY = 40;
+                
+                this.ctx.fillStyle = '#f4f4f4';
+                this.ctx.font = '8px "Press Start 2P", monospace';
+                
+                // Score
+                this.ctx.fillText('SCORE', hudX, hudY);
+                this.ctx.fillText(gameState.score.toString().padStart(8, '0'), hudX, hudY + 16);
+                
+                // Level
+                this.ctx.fillText('LEVEL', hudX, hudY + 40);
+                this.ctx.fillText(gameState.level.toString().padStart(2, '0'), hudX, hudY + 56);
+                
+                // Lines
+                this.ctx.fillText('LINES', hudX, hudY + 80);
+                this.ctx.fillText(gameState.lines.toString().padStart(3, '0'), hudX, hudY + 96);
+                
+                // Next piece
+                this.ctx.fillText('NEXT', hudX, hudY + 120);
+                if (gameState.nextPiece) {
+                    this.drawNextPiece(hudX, hudY + 140, gameState.nextPiece);
+                }
+            }
+            
+            drawNextPiece(x, y, pieceType) {
+                const cells = TETROMINO_SHAPES[pieceType][0];
+                const color = CONFIG.COLORS[pieceType];
+                
+                for (let row = 0; row < cells.length; row++) {
+                    for (let col = 0; col < cells[row].length; col++) {
+                        if (cells[row][col]) {
+                            this.drawBlock(
+                                x + col * CONFIG.BOARD.CELL_SIZE,
+                                y + row * CONFIG.BOARD.CELL_SIZE,
+                                color
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        // Main game class
+        class Game {
+            constructor() {
+                this.state = 'playing';
+                this.score = 0;
+                this.level = 0;
+                this.lines = 0;
+                this.board = new Board();
+                this.sevenBag = new SevenBag();
+                this.currentPiece = null;
+                this.nextPiece = null;
+                
+                this.gravity = new GravitySystem();
+                this.input = new InputHandler();
+                this.audio = new AudioSystem();
+                this.renderer = new Renderer(document.getElementById('gameCanvas'));
+                
+                this.lastTime = 0;
+                this.accumulator = 0;
+                
+                this.paused = false;
+                this.gameOver = false;
+                
+                // Scale control
+                this.scale = 1;
+                this.minScale = 0.5;
+                this.maxScale = 3;
+                this.scaleStep = 0.25;
+                
+                this.bindEvents();
+                this.setupScaleControls();
+            }
+            
+            bindEvents() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.code === CONFIG.KEYS.pause) {
+                        this.togglePause();
+                    } else if (e.code === CONFIG.KEYS.reset) {
+                        this.newGame();
+                    } else if (e.code === CONFIG.KEYS.rotate_cw && this.currentPiece && !this.paused && !this.gameOver) {
+                        if (this.currentPiece.rotate(1, this.board)) {
+                            this.audio.playSFX('rotate');
+                            this.resetLockIfOnGround();
+                        }
+                    } else if (e.code === CONFIG.KEYS.rotate_ccw && this.currentPiece && !this.paused && !this.gameOver) {
+                        if (this.currentPiece.rotate(-1, this.board)) {
+                            this.audio.playSFX('rotate');
+                            this.resetLockIfOnGround();
+                        }
+                    } else if (e.code === CONFIG.KEYS.soft_drop && this.currentPiece && !this.paused && !this.gameOver) {
+                        this.softDrop();
+                    } else if (e.code === CONFIG.KEYS.hard_drop && this.currentPiece && !this.paused && !this.gameOver) {
+                        this.hardDrop();
+                    }
+                    
+                    // Initialize audio on first keypress
+                    if (!this.audio.initialized) {
+                        this.audio.init();
+                    }
+                });
+            }
+            
+            setupScaleControls() {
+                const canvas = document.getElementById('gameCanvas');
+                const canvasContainer = canvas.parentElement;
+                const scaleUpBtn = document.getElementById('scaleUp');
+                const scaleDownBtn = document.getElementById('scaleDown');
+                const scaleDisplay = document.getElementById('scaleDisplay');
+                
+                const updateScale = () => {
+                    canvas.style.transform = `scale(${this.scale})`;
+                    scaleDisplay.textContent = `${Math.round(this.scale * 100)}%`;
+                    
+                    // Update container to accommodate scaled canvas
+                    const scaledWidth = 480 * this.scale;
+                    const scaledHeight = 360 * this.scale;
+                    canvasContainer.style.width = `${scaledWidth}px`;
+                    canvasContainer.style.height = `${scaledHeight}px`;
+                    
+                    // Update button states
+                    scaleUpBtn.disabled = this.scale >= this.maxScale;
+                    scaleDownBtn.disabled = this.scale <= this.minScale;
+                    
+                    if (scaleUpBtn.disabled) {
+                        scaleUpBtn.style.opacity = '0.5';
+                        scaleUpBtn.style.cursor = 'not-allowed';
+                    } else {
+                        scaleUpBtn.style.opacity = '1';
+                        scaleUpBtn.style.cursor = 'pointer';
+                    }
+                    
+                    if (scaleDownBtn.disabled) {
+                        scaleDownBtn.style.opacity = '0.5';
+                        scaleDownBtn.style.cursor = 'not-allowed';
+                    } else {
+                        scaleDownBtn.style.opacity = '1';
+                        scaleDownBtn.style.cursor = 'pointer';
+                    }
+                };
+                
+                scaleUpBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (this.scale < this.maxScale) {
+                        this.scale = Math.min(this.maxScale, this.scale + this.scaleStep);
+                        updateScale();
+                        this.audio.playSFX('move');
+                    }
+                });
+                
+                scaleDownBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (this.scale > this.minScale) {
+                        this.scale = Math.max(this.minScale, this.scale - this.scaleStep);
+                        updateScale();
+                        this.audio.playSFX('move');
+                    }
+                });
+                
+                // Keyboard shortcuts for scaling
+                document.addEventListener('keydown', (e) => {
+                    if (e.code === 'Equal' && (e.ctrlKey || e.metaKey)) { // Ctrl/Cmd + +
+                        e.preventDefault();
+                        if (this.scale < this.maxScale) {
+                            this.scale = Math.min(this.maxScale, this.scale + this.scaleStep);
+                            updateScale();
+                        }
+                    } else if (e.code === 'Minus' && (e.ctrlKey || e.metaKey)) { // Ctrl/Cmd + -
+                        e.preventDefault();
+                        if (this.scale > this.minScale) {
+                            this.scale = Math.max(this.minScale, this.scale - this.scaleStep);
+                            updateScale();
+                        }
+                    } else if (e.code === 'Digit0' && (e.ctrlKey || e.metaKey)) { // Ctrl/Cmd + 0
+                        e.preventDefault();
+                        this.scale = 1;
+                        updateScale();
+                    }
+                });
+                
+                // Initialize scale display
+                updateScale();
+                
+                // Auto-scale based on screen size
+                this.autoScale();
+                window.addEventListener('resize', () => this.autoScale());
+            }
+            
+            autoScale() {
+                // More conservative auto-scaling
+                const availableWidth = window.innerWidth - 250; // Account for controls panel
+                const availableHeight = window.innerHeight - 150; // Account for headers/margins
+                
+                // Calculate optimal scale to fit screen
+                const widthScale = availableWidth / 480;
+                const heightScale = availableHeight / 360;
+                const optimalScale = Math.min(widthScale, heightScale, this.maxScale);
+                
+                // Only auto-scale on very first load and if significantly different
+                if (this.scale === 1 && optimalScale < 0.75) {
+                    this.scale = Math.max(this.minScale, Math.round(optimalScale * 4) / 4);
+                    const canvas = document.getElementById('gameCanvas');
+                    const canvasContainer = canvas.parentElement;
+                    const scaleDisplay = document.getElementById('scaleDisplay');
+                    
+                    canvas.style.transform = `scale(${this.scale})`;
+                    scaleDisplay.textContent = `${Math.round(this.scale * 100)}%`;
+                    
+                    const scaledWidth = 480 * this.scale;
+                    const scaledHeight = 360 * this.scale;
+                    canvasContainer.style.width = `${scaledWidth}px`;
+                    canvasContainer.style.height = `${scaledHeight}px`;
+                }
+            }
+            
+            async init() {
+                this.newGame();
+                this.gameLoop();
+            }
+            
+            newGame() {
+                this.state = 'playing';
+                this.score = 0;
+                this.level = 0;
+                this.lines = 0;
+                this.board = new Board();
+                this.sevenBag = new SevenBag();
+                this.paused = false;
+                this.gameOver = false;
+                
+                document.getElementById('gameOverScreen').style.display = 'none';
+                
+                this.spawnNext();
+            }
+            
+            spawnNext() {
+                if (!this.nextPiece) {
+                    this.nextPiece = this.sevenBag.next();
+                }
+                
+                this.currentPiece = new Tetromino(this.nextPiece);
+                this.nextPiece = this.sevenBag.next();
+                
+                this.gravity = new GravitySystem();
+                
+                // Check game over
+                if (!this.board.isValidPosition(
+                    this.currentPiece.cells, 
+                    this.currentPiece.x, 
+                    this.currentPiece.y
+                )) {
+                    this.endGame();
+                }
+            }
+            
+            update(dt) {
+                if (this.paused || this.gameOver) return;
+                
+                // Handle movement input
+                const movement = this.input.update(dt);
+                if (movement && this.currentPiece) {
+                    this.handleMovement(movement);
+                }
+                
+                // Update gravity
+                if (this.currentPiece) {
+                    const gravityResult = this.gravity.update(dt, this.level, this.currentPiece, this.board);
+                    if (gravityResult.shouldLock) {
+                        this.lockPiece();
+                    }
+                }
+            }
+            
+            handleMovement(movement) {
+                const piece = this.currentPiece;
+                const dx = movement.move === 'left' ? -1 : 1;
+                
+                if (this.board.isValidPosition(piece.cells, piece.x + dx, piece.y)) {
+                    piece.x += dx;
+                    this.audio.playSFX('move');
+                    this.resetLockIfOnGround();
+                }
+            }
+            
+            softDrop() {
+                const piece = this.currentPiece;
+                if (this.board.isValidPosition(piece.cells, piece.x, piece.y + 1)) {
+                    piece.y++;
+                    this.score += CONFIG.SCORING.MOVEMENT.soft_drop_per_cell;
+                    this.gravity.gravityTimer = 0; // Reset gravity timer
+                } else {
+                    this.gravity.startLocking();
+                }
+            }
+            
+            hardDrop() {
+                if (!CONFIG.FEATURES.hard_drop) return;
+                
+                const piece = this.currentPiece;
+                let dropDistance = 0;
+                
+                while (this.board.isValidPosition(piece.cells, piece.x, piece.y + 1)) {
+                    piece.y++;
+                    dropDistance++;
+                }
+                
+                this.score += dropDistance * CONFIG.SCORING.MOVEMENT.hard_drop_per_cell;
+                this.audio.playSFX('move');
+                this.lockPiece();
+            }
+            
+            resetLockIfOnGround() {
+                if (!this.board.isValidPosition(this.currentPiece.cells, this.currentPiece.x, this.currentPiece.y + 1)) {
+                    this.gravity.resetLock();
+                }
+            }
+            
+            lockPiece() {
+                this.board.lockPiece(this.currentPiece);
+                this.audio.playSFX('lock');
+                
+                const clearedLines = this.board.checkLines();
+                if (clearedLines.length > 0) {
+                    this.clearLines(clearedLines);
+                }
+                
+                this.gravity.finishLock();
+                
+                setTimeout(() => {
+                    if (!this.gameOver) {
+                        this.spawnNext();
+                    }
+                }, CONFIG.TIMING.ENTRY_DELAY);
+            }
+            
+            clearLines(lines) {
+                const count = lines.length;
+                this.lines += count;
+                
+                // Award points
+                const basePoints = CONFIG.SCORING.LINE_CLEAR[count] || 0;
+                const points = basePoints * (this.level + 1);
+                this.score += points;
+                
+                // Check level up
+                const newLevel = Math.floor(this.lines / CONFIG.SCORING.LINES_PER_LEVEL);
+                if (newLevel > this.level) {
+                    this.level = newLevel;
+                    this.audio.playSFX('level_up');
+                }
+                
+                // Play appropriate sound
+                if (count === 4) {
+                    this.audio.playSFX('tetris');
+                } else {
+                    this.audio.playSFX('line_clear');
+                }
+                
+                this.board.clearLines(lines);
+            }
+            
+            togglePause() {
+                this.paused = !this.paused;
+            }
+            
+            endGame() {
+                this.gameOver = true;
+                this.audio.playSFX('game_over');
+                
+                // Show game over screen
+                document.getElementById('finalScore').textContent = this.score;
+                document.getElementById('finalLevel').textContent = this.level;
+                document.getElementById('finalLines').textContent = this.lines;
+                document.getElementById('gameOverScreen').style.display = 'flex';
+            }
+            
+            gameLoop() {
+                const currentTime = performance.now();
+                const dt = currentTime - this.lastTime;
+                this.lastTime = currentTime;
+                
+                this.accumulator += dt;
+                
+                while (this.accumulator >= CONFIG.TIMING.FRAME_TIME) {
+                    this.update(CONFIG.TIMING.FRAME_TIME);
+                    this.accumulator -= CONFIG.TIMING.FRAME_TIME;
+                }
+                
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+            
+            render() {
+                this.renderer.clear();
+                this.renderer.drawBoard(this.board);
+                
+                if (this.currentPiece) {
+                    this.renderer.drawGhost(this.currentPiece, this.board);
+                    this.renderer.drawPiece(this.currentPiece);
+                }
+                
+                this.renderer.drawHUD(this);
+                
+                // Draw pause overlay
+                if (this.paused) {
+                    this.renderer.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    this.renderer.ctx.fillRect(0, 0, CONFIG.CANVAS.WIDTH, CONFIG.CANVAS.HEIGHT);
+                    
+                    this.renderer.ctx.fillStyle = '#f4f4f4';
+                    this.renderer.ctx.font = '16px "Press Start 2P", monospace';
+                    this.renderer.ctx.textAlign = 'center';
+                    this.renderer.ctx.fillText('PAUSED', CONFIG.CANVAS.WIDTH / 2, CONFIG.CANVAS.HEIGHT / 2);
+                    this.renderer.ctx.textAlign = 'left';
+                }
+            }
+        }
+
+        // Start the game
+        const game = new Game();
+        game.init();
+    </script>
+</body>
+</html>
